@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}{{ notice['title'] }} - Digital Notice Board{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+
+    <!-- Top Action & Navigation Bar -->
+    <div class="flex flex-wrap items-center justify-between gap-4 print:hidden">
+        <!-- Breadcrumbs -->
+        <nav class="flex items-center space-x-2 text-xs sm:text-sm text-slate-500">
+            <a href="{{ url_for('index') }}" class="hover:text-blue-600 transition-colors">
+                <i class="fa-solid fa-house text-xs mr-1"></i> Board
+            </a>
+            <i class="fa-solid fa-chevron-right text-[10px] text-slate-300"></i>
+            <a href="{{ url_for('index', category=notice['category']) }}" class="hover:text-blue-600 transition-colors">
+                {{ notice['category'] }}
+            </a>
+            <i class="fa-solid fa-chevron-right text-[10px] text-slate-300"></i>
+            <span class="text-slate-800 font-medium truncate max-w-xs sm:max-w-sm">Notice #{{ notice['id'] }}</span>
+        </nav>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center space-x-2">
+            <!-- Share / Copy Link -->
+            <button type="button" onclick="copyCurrentUrl()" class="px-3 py-2 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 shadow-sm transition-all flex items-center space-x-1.5">
+                <i class="fa-solid fa-link text-xs"></i>
+                <span id="copyBtnText">Copy Link</span>
+            </button>
+
+            <!-- Print Button -->
+            <button type="button" onclick="window.print()" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 shadow-sm transition-all flex items-center space-x-1.5">
+                <i class="fa-solid fa-print text-xs"></i>
+                <span>Print Notice</span>
+            </button>
+
+            <!-- Admin Actions -->
+            {% if is_admin %}
+                <a href="{{ url_for('edit_notice', id=notice['id']) }}" class="px-3 py-2 rounded-xl text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition-all flex items-center space-x-1.5">
+                    <i class="fa-solid fa-pen-to-square text-xs"></i>
+                    <span>Edit</span>
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- MAIN NOTICE DOCUMENT CONTAINER (Print-optimised) -->
+    <article class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-10 relative overflow-hidden print:border-none print:shadow-none print:p-0">
+
+        <!-- Watermark / Status Header -->
+        <div class="border-b-2 border-slate-900/10 pb-6 mb-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-extrabold text-xl shadow-md">
+                        <i class="fa-solid fa-landmark"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xs uppercase tracking-widest font-bold text-slate-400">Institutional Digital Bulletin</h2>
+                        <h3 class="text-lg font-bold text-slate-900">OFFICIAL NOTIFICATION CIRCULAR</h3>
+                    </div>
+                </div>
+
+                <!-- Ref Number & Priority -->
+                <div class="text-left sm:text-right text-xs space-y-1">
+                    <p class="font-mono text-slate-500">Ref: <strong class="text-slate-800">DNB/2026/CIRC-{{ "%04d" % notice['id'] }}</strong></p>
+                    <p class="text-slate-500">Date Issued: <strong class="text-slate-800">{{ notice['created_at']|format_date }}</strong></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Meta Tag Badges -->
+        <div class="flex flex-wrap items-center gap-2 mb-6">
+            <span class="text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider
+                {% if notice['category'] == 'Urgent Notice' %} bg-red-100 text-red-700
+                {% elif notice['category'] == 'Examination' %} bg-purple-100 text-purple-700
+                {% elif notice['category'] == 'Placement' %} bg-emerald-100 text-emerald-700
+                {% elif notice['category'] == 'Academic' %} bg-blue-100 text-blue-700
+                {% else %} bg-slate-100 text-slate-700 {% endif %}">
+                <i class="fa-solid fa-tag text-[10px] mr-1"></i>
+                {{ notice['category'] }}
+            </span>
+
+            {% if notice['priority'] == 'Urgent' %}
+                <span class="text-xs font-bold px-3 py-1 rounded-full bg-red-600 text-white uppercase tracking-wider">
+                    <i class="fa-solid fa-fire mr-1"></i> Urgent Priority
+                </span>
+            {% elif notice['priority'] == 'High' %}
+                <span class="text-xs font-semibold px-3 py-1 rounded-full bg-amber-100 text-amber-800">
+                    High Priority
+                </span>
+            {% endif %}
+
+            {% if notice['is_pinned'] %}
+                <span class="text-xs font-semibold px-3 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-300">
+                    <i class="fa-solid fa-thumbtack text-amber-500 mr-1"></i> Pinned Notice
+                </span>
+            {% endif %}
+
+            {% if notice['expiry_date'] %}
+                <span class="text-xs font-medium px-3 py-1 rounded-full bg-slate-100 text-slate-600">
+                    <i class="fa-regular fa-clock mr-1 text-slate-400"></i> Valid until: {{ notice['expiry_date']|format_date }}
+                </span>
+            {% endif %}
+        </div>
+
+        <!-- Notice Subject / Title -->
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-tight">
+            {{ notice['title'] }}
+        </h1>
+
+        <div class="mt-2 text-sm text-slate-500 font-medium flex items-center space-x-2">
+            <span>Issued by:</span>
+            <span class="text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded-md">
+                <i class="fa-solid fa-building mr-1"></i> {{ notice['department'] }}
+            </span>
+        </div>
+
+        <!-- Body / Content with formatting -->
+        <div class="mt-8 pt-6 border-t border-slate-100 text-slate-700 text-base leading-relaxed space-y-4">
+            {% for para in notice['content'].split('\n\n') %}
+                <p>{{ para|replace('\n', '<br>')|safe }}</p>
+            {% endfor %}
+        </div>
+
+        <!-- Attachment Link Box (if available) -->
+        {% if notice['attachment_url'] %}
+            <div class="mt-8 p-4 rounded-2xl bg-blue-50/70 border border-blue-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 print:hidden">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center text-lg shrink-0">
+                        <i class="fa-solid fa-file-arrow-down"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold text-slate-900">Official Document Attachment</h4>
+                        <p class="text-xs text-slate-500 truncate max-w-sm">{{ notice['attachment_url'] }}</p>
+                    </div>
+                </div>
+                <a href="{{ notice['attachment_url'] }}" target="_blank" rel="noopener noreferrer" 
+                   class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors shadow-sm inline-flex items-center space-x-1.5 shrink-0">
+                    <span>View / Download Attachment</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                </a>
+            </div>
+        {% endif %}
+
+        <!-- Official Sign-off Block -->
+        <div class="mt-12 pt-8 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
+            <div class="text-xs text-slate-400 space-y-1">
+                <p><i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i> Digitally Signed & Authenticated</p>
+                <p>System Timestamp: {{ notice['created_at'] }}</p>
+                {% if notice['updated_at'] != notice['created_at'] %}
+                    <p>Last Revised: {{ notice['updated_at'] }}</p>
+                {% endif %}
+            </div>
+
+            <div class="text-left sm:text-right border-t sm:border-t-0 pt-4 sm:pt-0 border-slate-200">
+                <div class="w-28 h-10 mb-2 border-b border-dashed border-slate-400 sm:ml-auto"></div>
+                <p class="text-sm font-bold text-slate-800">Authorized Signatory</p>
+                <p class="text-xs text-slate-500">{{ notice['department'] }}</p>
+            </div>
+        </div>
+
+    </article>
+
+    <!-- RELATED NOTICES SECTION -->
+    {% if related_notices %}
+        <div class="pt-6 print:hidden">
+            <h3 class="text-base font-bold text-slate-800 mb-4 flex items-center">
+                <i class="fa-solid fa-layer-group text-blue-600 mr-2"></i>
+                Other Notices in <span class="text-blue-600 ml-1">{{ notice['category'] }}</span>
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {% for item in related_notices %}
+                    <a href="{{ url_for('notice_detail', id=item['id']) }}" class="block bg-white p-4 rounded-2xl border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                            {{ item['created_at']|format_date }}
+                        </span>
+                        <h4 class="mt-2 text-sm font-bold text-slate-800 line-clamp-2 hover:text-blue-600 transition-colors">
+                            {{ item['title'] }}
+                        </h4>
+                        <p class="mt-1 text-xs text-slate-500 line-clamp-2">
+                            {{ item['content'] }}
+                        </p>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Back to Board CTA -->
+    <div class="text-center pt-4 print:hidden">
+        <a href="{{ url_for('index') }}" class="inline-flex items-center text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">
+            <i class="fa-solid fa-arrow-left mr-2"></i> Return to Notice Board
+        </a>
+    </div>
+
+</div>
+{% endblock %}
